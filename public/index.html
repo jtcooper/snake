@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.0/angular.min.js"></script>
+	<!-- <script src="https://angular-ui.github.io/ui-router/release/angular-ui-router.js"></script> -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+
+	<script src="https://www.gstatic.com/firebasejs/4.8.0/firebase.js"></script>
+	<script>
+	  // Initialize Firebase
+	  var config = {
+	    apiKey: "AIzaSyBq9caCedGxAcVp0hfA-ZU5uBh4s0Cefqo",
+	    authDomain: "creative6-919fb.firebaseapp.com",
+	    databaseURL: "https://creative6-919fb.firebaseio.com",
+	    projectId: "creative6-919fb",
+	    storageBucket: "",
+	    messagingSenderId: "664423514775"
+	  };
+	  firebase.initializeApp(config);
+	</script>
+	<!-- <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script> -->
+	<script type="text/javascript" src="javascripts/paper-full.js"></script>
+	<link href="stylesheets/style.css" rel="stylesheet" type="text/css"></link>
+	<!-- <script src="javascripts/app.js"></script> -->
+	<script type="text/paperscript" canvas="myCanvas">
+		// kynd.info 2014
+
+		var PLAYER_SPEED = 3;
+		var BALL_SPEED = 4;
+		var gameOver = false;
+		var INVINCIBLE_MAX = 300;
+		var invincibleTimer = INVINCIBLE_MAX;
+
+		function Ball(r, p, v) {
+			this.id = "ball";
+			this.radius = r;
+			this.point = p;
+			this.vector = v;
+			this.maxVec = BALL_SPEED;
+			this.numSegment = Math.floor(r / 3 + 2);
+			this.boundOffset = [];
+			this.boundOffsetBuff = [];
+			this.sidePoints = [];
+			this.path = new Path({
+				fillColor: {
+					hue: Math.random() * 360,
+					saturation: 1,
+					brightness: 1
+				},
+				blendMode: 'lighter'
+			});
+
+			for (var i = 0; i < this.numSegment; i ++) {
+				this.boundOffset.push(this.radius);
+				this.boundOffsetBuff.push(this.radius);
+				this.path.add(new Point());
+				this.sidePoints.push(new Point({
+					angle: 360 / this.numSegment * i,
+					length: 1
+				}));
+			}
+		}
+
+		Ball.prototype = {
+			iterate: function() {
+				this.checkBorders();
+				if (this.vector.length > this.maxVec)
+					this.vector.length = this.maxVec;
+				this.point += this.vector;
+				this.updateShape();
+			},
+
+			checkBorders: function() {
+				var size = view.size;
+				if (this.point.x < -this.radius)
+					this.point.x = size.width + this.radius;
+				if (this.point.x > size.width + this.radius)
+					this.point.x = -this.radius;
+				if (this.point.y < -this.radius)
+					this.point.y = size.height + this.radius;
+				if (this.point.y > size.height + this.radius)
+					this.point.y = -this.radius;
+			},
+
+			updateShape: function() {
+				var segments = this.path.segments;
+				for (var i = 0; i < this.numSegment; i ++)
+					segments[i].point = this.getSidePoint(i);
+
+				this.path.smooth();
+				for (var i = 0; i < this.numSegment; i ++) {
+					if (this.boundOffset[i] < this.radius / 4)
+						this.boundOffset[i] = this.radius / 4;
+					var next = (i + 1) % this.numSegment;
+					var prev = (i > 0) ? i - 1 : this.numSegment - 1;
+					var offset = this.boundOffset[i];
+					offset += (this.radius - offset) / 15;
+					offset += ((this.boundOffset[next] + this.boundOffset[prev]) / 2 - offset) / 3;
+					this.boundOffsetBuff[i] = this.boundOffset[i] = offset;
+				}
+			},
+
+			react: function(b) {
+				var dist = this.point.getDistance(b.point);
+				if (dist < this.radius + b.radius && dist != 0) {
+					var overlap = this.radius + b.radius - dist;
+					var direc = (this.point - b.point).normalize(overlap * 0.015);
+					this.vector += direc;
+					b.vector -= direc;
+
+					// check to see if it's the player object
+					if (b.id === "player") {
+						if (invincibleTimer <= 0) {
+							// check to see which is bigger
+							if (this.radius >= b.radius) {
+								gameOver = true;
+							}
+							else {
+								this.remove();
+								return true;
+							}
+						}
+					}
+					else {
+						this.calcBounds(b);
+						b.calcBounds(this);
+						this.updateBounds();
+						b.updateBounds();
+					}
+				}
+			},
+
+			getBoundOffset: function(b) {
+				var diff = this.point - b;
+				var angle = (diff.angle + 180) % 360;
+				return this.boundOffset[Math.floor(angle / 360 * this.boundOffset.length)];
+			},
+
+			calcBounds: function(b) {
+				for (var i = 0; i < this.numSegment; i ++) {
+					var tp = this.getSidePoint(i);
+					var bLen = b.getBoundOffset(tp);
+					var td = tp.getDistance(b.point);
+					if (td < bLen) {
+						this.boundOffsetBuff[i] -= (bLen  - td) / 2;
+					}
+				}
+			},
+
+			getSidePoint: function(index) {
+				return this.point + this.sidePoints[index] * this.boundOffset[index];
+			},
+
+			updateBounds: function() {
+				for (var i = 0; i < this.numSegment; i ++)
+					this.boundOffset[i] = this.boundOffsetBuff[i];
+			},
+			remove: function() {
+				// this object is getting eaten by another object
+				this.path.remove();
+				console.log("delete ball");
+			}
+		};
+
+		//--------------------- food ---------------------
+
+		function Food(p) {
+			console.log("new food");
+			this.radius = 10;
+			this.point = p;
+			this.vector = 0;
+			this.MaxVec = 0;
+			this.numSegment = Math.floor(6);
+			this.boundOffset = [];
+			this.boundOffsetBuff = [];
+			this.sidePoints = [];
+			this.path = new Path({
+				fillColor: {
+					hue: Math.random() * 360,
+					saturation: 1,
+					brightness: 1
+				},
+				blendMode: 'lighter'
+			});
+			for (var i = 0; i < this.numSegment; i ++) {
+				this.boundOffset.push(this.radius);
+				this.boundOffsetBuff.push(this.radius);
+				this.path.add(new Point());
+				this.sidePoints.push(new Point({
+					angle: 360 / this.numSegment * i,
+					length: 1
+				}));
+			}
+			this.iterate();
+		}
+		Food.prototype = {
+			iterate: function() {
+				this.checkBorders();
+				if (this.vector.length > this.maxVec)
+					this.vector.length = this.maxVec;
+				this.point += this.vector;
+				this.updateShape();
+			},
+
+			checkBorders: function() {
+				var size = view.size;
+				if (this.point.x < -this.radius)
+					this.point.x = size.width + this.radius;
+				if (this.point.x > size.width + this.radius)
+					this.point.x = -this.radius;
+				if (this.point.y < -this.radius)
+					this.point.y = size.height + this.radius;
+				if (this.point.y > size.height + this.radius)
+					this.point.y = -this.radius;
+			},
+
+			updateShape: function() {
+				var segments = this.path.segments;
+				for (var i = 0; i < this.numSegment; i++)
+					segments[i].point = this.getSidePoint(i);
+
+				this.path.smooth();
+				for (var i = 0; i < this.numSegment; i ++) {
+					if (this.boundOffset[i] < this.radius / 4)
+						this.boundOffset[i] = this.radius / 4;
+					var next = (i + 1) % this.numSegment;
+					var prev = (i > 0) ? i - 1 : this.numSegment - 1;
+					var offset = this.boundOffset[i];
+					offset += (this.radius - offset) / 15;
+					offset += ((this.boundOffset[next] + this.boundOffset[prev]) / 2 - offset) / 3;
+					this.boundOffsetBuff[i] = this.boundOffset[i] = offset;
+				}
+			},
+
+			getSidePoint: function(index) {
+				return this.point + this.sidePoints[index] * this.boundOffset[index];
+			},
+			remove: function() {
+				// this object is getting eaten by another object
+				this.path.remove();
+				console.log("delete food");
+			}
+		}
+
+		//------------------- playerObj ------------------
+
+		function Player(p) {
+			this.id = "player";
+			this.radius = 20;
+			this.point = p;
+			this.vector = new Point({length: PLAYER_SPEED, angle: 0});
+			this.numSegment = 4;
+			/*this.path = new Path.Circle(this.point, this.radius);
+			//this.path.fillColor = {hue: Math.random() * 360, saturation: 1, brightness: 1};
+			this.path.fillColor = 'black';
+			for (var i = 0; i < this.numSegment; i++) {
+				this.segmentVectors.push(this.path.segments[i].point - this.point);
+			}*/
+			this.resetSize();
+
+			//var sideVector = new Point({length: this.radius, angle: 0});
+			//for (var i = 0; i < this.numSegment; i++) {
+			//	console.log(sideVector);
+			//	sideVector = sideVector.rotate(90);
+			//	console.log(this.path.segments[i].point);
+			//}
+		}
+		Player.prototype = {
+			iterate: function() {
+				this.checkBorders();
+				this.vector.length = PLAYER_SPEED;
+				this.point += this.vector;
+				if (invincibleTimer <= 0)
+					this.path.strokeColor = 'black';
+				else
+					this.path.strokeColor = new Color(1.0 - (invincibleTimer / INVINCIBLE_MAX), 1.0 - (invincibleTimer / INVINCIBLE_MAX), 1.0);
+
+				var segments = this.path.segments;
+				for (var i = 0; i < this.numSegment; i++) {
+					segments[i].point = this.point + this.segmentVectors[i];
+				}
+			},
+			checkBorders: function() {
+				var size = view.size;
+				if (this.point.x < -this.radius)
+					this.point.x = size.width + this.radius;
+				if (this.point.x > size.width + this.radius)
+					this.point.x = -this.radius;
+				if (this.point.y < -this.radius)
+					this.point.y = size.height + this.radius;
+				if (this.point.y > size.height + this.radius)
+					this.point.y = -this.radius;
+			},
+			react: function(other) {
+				var dist = this.point.getDistance(other.point);
+				if (dist < this.radius + other.radius && dist != 0) {
+					// check to see which object is bigger
+					if (this.radius > other.radius) {
+						// eat the other object
+						this.radius += other.radius;
+						this.resetSize();
+						other.remove();
+						return true;
+					}
+				}
+			},
+			resetSize: function() {
+				if (this.path != undefined) {
+					this.path.remove();
+				}
+				this.segmentVectors = [];
+				this.path = new Path.Circle(this.point, this.radius);
+				this.path.fillColor = 'black';
+				this.path.strokeColor = '#ff0000';
+				this.path.strokeWidth = 5;
+
+				for (var i = 0; i < this.numSegment; i++) {
+					this.segmentVectors.push(this.path.segments[i].point - this.point);
+				}
+			},
+			moveLeft: function() {
+				this.vector = this.vector.rotate(-5);
+			},
+			moveRight: function() {
+				this.vector = this.vector.rotate(5);
+			}//,
+
+
+			/*calcBounds: function(other) {
+				// do nothing
+			},
+			updateBounds: function() {
+				// do nothing
+			},
+			getBoundOffset: function(b) {
+				// GAME OVER
+				gameOver = true;
+				var diff = this.point - b;
+				var angle = (diff.angle + 180) % 360;
+				//return this.boundOffset[Math.floor(angle / 360 * this.boundOffset.length)];
+				return 0;
+			}*/
+		}
+
+		//--------------------- main ---------------------
+
+		var balls = [];
+		var numBalls = 18;
+		for (var i = 0; i < numBalls; i++) {
+			var position = Point.random() * view.size;
+			var vector = new Point({
+				angle: 360 * Math.random(),
+				length: Math.random() * 10
+			});
+			var radius = Math.random() * 30 + 30;
+			balls.push(new Ball(radius, position, vector));
+		}
+
+		var foodObj = [];
+		var MAX_TIMER = 60;
+		var timer = MAX_TIMER;
+
+		var player = new Player(Point.random() * view.size);
+
+		/*function onKeyDown(event) {
+			switch (event.key) {
+				case 'a':
+					player.moveLeft();
+					break;
+				case 'd':
+					player.moveRight();
+					break;
+			}
+		}*/
+
+		function CheckGameEnd() {
+			if (numBalls <= 0) {
+				alert("You win!");
+				paper.project.remove();
+			}
+		}
+
+		function onFrame() {
+			timer--;
+			invincibleTimer--;
+			if (timer <= 0) {
+				timer = MAX_TIMER;
+				foodObj.push(new Food(Point.random() * view.size));
+			}
+			player.iterate();
+			var isEaten = false;
+			for (var i = 0; i < balls.length; i++) {
+				var isEaten = balls[i].react(player);
+				if (isEaten) {
+					balls.splice(i, 1);
+					isEaten = false;
+					numBalls--;
+				}
+			}
+
+			for (var i = 0; i < balls.length - 1; i++) {
+				for (var j = i + 1; j < balls.length; j++) {
+					balls[i].react(balls[j]);
+				}
+			}
+			for (var i = 0, l = balls.length; i < l; i++) {
+				balls[i].iterate();
+			}
+			
+			isEaten = false;
+			for (var i = 0; i < foodObj.length; i++) {
+				//foodObj[i].iterate();
+				var isEaten = player.react(foodObj[i]);
+				if (isEaten) {
+					foodObj.splice(i, 1);
+					isEaten = false;
+				}
+			}
+			if (Key.isDown('a')) {
+				player.moveLeft();
+			}
+			else if (Key.isDown('d')) {
+				player.moveRight();
+			}
+			if (gameOver) {
+				alert("Game Over");
+				paper.project.remove();
+				gameOver = false;
+			}
+		}
+	</script>
+	<script type="text/paperscript" canvas="myCanvas">
+		
+	</script>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<meta charset="utf-8">
+	<title>Creative 6</title>
+</head>
+<body>
+	<canvas id="myCanvas" resize></canvas>
+</body>
+</html>
