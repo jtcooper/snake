@@ -1,0 +1,4 @@
+nohup: ignoring input
+[0mGET /index.html [36m304 [0m6.068 ms - -[0m
+[0mGET /stylesheets/style.css [36m304 [0m2.177 ms - -[0m
+[0mGET /javascripts/paper-full.js [36m304 [0m2.483 ms - -[0m
