@@ -28,9 +28,9 @@
 		var PLAYER_SPEED = 3;
 		var BALL_SPEED = 5;
 		var BALL_MAX_RADIUS = 80;
-		var gameOver = false;
+		var BALL_MIN_RADIUS = 30;
 		var INVINCIBLE_MAX = 300;
-		var invincibleTimer = INVINCIBLE_MAX;
+		var MAX_FOOD_TIMER = 30;
 
 		function Ball(r, p, v) {
 			this.id = "ball";
@@ -42,6 +42,12 @@
 			this.boundOffset = [];
 			this.boundOffsetBuff = [];
 			this.sidePoints = [];
+			this.score = parseInt(this.radius);
+			this.scoreText = new PointText(this.point);
+			this.scoreText.justification = 'center';
+			this.scoreText.content = this.score;
+			this.scoreText.fillColor = 'black';
+
 			this.path = new Path({
 				fillColor: {
 					hue: Math.random() * 360,
@@ -69,6 +75,7 @@
 				if (this.vector.length > this.maxVec)
 					this.vector.length = this.maxVec;
 				this.point += this.vector;
+				this.scoreText.point = this.point;
 				this.updateShape();
 			},
 
@@ -114,7 +121,7 @@
 					if (b.id === "player") {
 						if (invincibleTimer <= 0) {
 							// check to see which is bigger
-							if (this.radius >= b.radius) {
+							if (this.radius > parseInt(b.radius)) {
 								gameOver = true;
 							}
 							else {
@@ -160,6 +167,7 @@
 			remove: function() {
 				// this object is getting eaten by another object
 				this.path.remove();
+				this.scoreText.remove();
 				console.log("delete ball");
 			}
 		};
@@ -254,6 +262,7 @@
 			this.vector = new Point({length: PLAYER_SPEED, angle: 0});
 			this.area = Math.PI * Math.pow(this.radius, 2);
 			this.numSegment = 4;
+			this.score = parseInt(this.radius);
 			/*this.path = new Path.Circle(this.point, this.radius);
 			//this.path.fillColor = {hue: Math.random() * 360, saturation: 1, brightness: 1};
 			this.path.fillColor = 'black';
@@ -274,6 +283,7 @@
 				this.checkBorders();
 				this.vector.length = PLAYER_SPEED;
 				this.point += this.vector;
+				this.scoreText.point = this.point + [0, 5];
 				if (invincibleTimer <= 0)
 					this.path.strokeColor = 'black';
 				else
@@ -304,6 +314,7 @@
 						//this.radius += other.radius;
 						this.area += other.area;
 						this.radius = Math.sqrt(this.area / Math.PI);
+						this.score = parseInt(this.radius);
 						this.resetSize();
 						other.remove();
 						return true;
@@ -313,12 +324,18 @@
 			resetSize: function() {
 				if (this.path != undefined) {
 					this.path.remove();
+					this.scoreText.remove();
 				}
 				this.segmentVectors = [];
 				this.path = new Path.Circle(this.point, this.radius);
 				this.path.fillColor = 'black';
 				//this.path.strokeColor = '#ff0000';
-				this.path.strokeWidth = 5;
+				if (invincibleTimer > 0)
+					this.path.strokeWidth = 5;
+				this.scoreText = new PointText(this.point);
+				this.scoreText.justification = 'center';
+				this.scoreText.content = this.score;
+				this.scoreText.fillColor = 'white';
 
 				for (var i = 0; i < this.numSegment; i++) {
 					this.segmentVectors.push(this.path.segments[i].point - this.point);
@@ -349,40 +366,52 @@
 		}
 
 		//--------------------- main ---------------------
-
-
-		var MAX_TIMER = 60;
-		var timer = MAX_TIMER;
+		
+		var foodTimer;
+		var invincibleTimer;
+		var balls;
+		var numBalls;
+		var shieldText;
+		var foodObj;
+		var player;
+		var gameOver = true;
 		var gameLayer = new Layer();
 		var instructionLayer = new Layer();
 		var instructions = new PointText(new Point(view.size.width / 2, view.size.height - 35));
 		instructions.fillColor = 'black';
 		instructions.fontSize = 20;
 		instructions.justification = 'center';
-		instructions.content = "Move Left: Left Arrow  -  Move Right: Right Arrow\nEat the smaller balls, but watch out for the bigger ones!";
+		instructions.content = "Move Left: Left Arrow ( A )  -  Move Right: Right Arrow ( D )\nEat the smaller balls, but watch out for the bigger ones!";
 		//var test = Path.Circle(new Point(view.size.width / 2, view.size.height / 2), 30);
 		//test.fillColor = 'blue';
-		var shieldText = new PointText(new Point(view.size.width / 2, 25));
-		shieldText.fontSize = 20;
-		shieldText.justification = 'center';
-		shieldText.fillColor = "#220000";
-		shieldText.name = "shield";
 		gameLayer.activate();
 
-		var balls = [];
-		var numBalls = 18;
-		for (var i = 0; i < numBalls; i++) {
-			var position = Point.random() * view.size;
-			var vector = new Point({
-				angle: 360 * Math.random(),
-				length: Math.random() * 10
-			});
-			var radius = Math.random() * (BALL_MAX_RADIUS / 2) + (BALL_MAX_RADIUS / 2);
-			balls.push(new Ball(radius, position, vector));
-		}
+		function InitGame() {
+			gameOver = false;
+			foodTimer = MAX_FOOD_TIMER;
+			invincibleTimer = INVINCIBLE_MAX;
+			balls = [];
+			numBalls = 18;
+			instructionLayer.activate();
+			shieldText = new PointText(new Point(view.size.width / 2, 25));
+			shieldText.fontSize = 20;
+			shieldText.justification = 'center';
+			shieldText.fillColor = "#220000";
+			shieldText.name = "shield";
+			gameLayer.activate();
 
-		var foodObj = [];
-		var player = new Player(Point.random() * view.size);
+			for (var i = 0; i < numBalls; i++) {
+				var position = Point.random() * view.size;
+				var vector = new Point({
+					angle: 360 * Math.random(),
+					length: Math.random() * 10
+				});
+				var radius = Math.random() * (BALL_MAX_RADIUS - BALL_MIN_RADIUS) + BALL_MIN_RADIUS;
+				balls.push(new Ball(radius, position, vector));
+			}
+			foodObj = [];
+			player = new Player(Point.random() * view.size);
+		}
 
 		/*function onKeyDown(event) {
 			switch (event.key) {
@@ -398,22 +427,27 @@
 		function CheckGameEnd() {
 			if (numBalls <= 0) {
 				alert("You win!");
-				paper.project.remove();
+				paper.project.activeLayer.removeChildren();
+				InitGame();
 			}
 		}
 
+		InitGame();
+
 		function onFrame() {
-			timer--;
+			if (gameOver) { return; }
+			foodTimer--;
 			invincibleTimer--;
 			if (invincibleTimer > 0) {
 				shieldText.content = "Invincibility: " + (parseInt(invincibleTimer / 60) + 1) + " sec";
 			}
 			else if (invincibleTimer === 0) {
 				instructionLayer.children['shield'].remove();
+				player.resetSize();
 			}
 
-			if (timer <= 0) {
-				timer = MAX_TIMER;
+			if (foodTimer <= 0) {
+				foodTimer = MAX_FOOD_TIMER;
 				foodObj.push(new Food(Point.random() * view.size));
 			}
 			player.iterate();
@@ -454,8 +488,8 @@
 			}
 			if (gameOver) {
 				alert("Game Over");
-				paper.project.remove();
-				gameOver = false;
+				paper.project.activeLayer.removeChildren();
+				InitGame();
 			}
 		}
 	</script>

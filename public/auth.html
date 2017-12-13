@@ -9,7 +9,8 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
   <script defer src="https://code.getmdl.io/1.1.3/material.min.js"></script>
 
-  <link rel="stylesheet" href="main.css">
+  <!-- <link rel="stylesheet" href="main.css"> -->
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.4.0/angular.min.js"></script>
   <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
 
@@ -31,6 +32,7 @@
     /**
      * Function called when clicking the Login/Logout button.
      */
+     var hidePlayButton = true;
     // [START buttoncallback]
     function toggleSignIn() {
       if (!firebase.auth().currentUser) {
@@ -63,64 +65,67 @@
     function initApp() {
       // Result from Redirect auth flow.
       // [START getidptoken]
-//      firebase.auth().getRedirectResult().then(function(result) {
-//        if (result.credential) {
+     firebase.auth().getRedirectResult().then(function(result) {
+       // if (result.credential) {
           // This gives you a GitHub Access Token. You can use it to access the GitHub API.
- //         var token = result.credential.accessToken;
+         // var token = result.credential.accessToken;
           // [START_EXCLUDE]
-  //        document.getElementById('quickstart-oauthtoken').textContent = token;
-//        } else {
-  //        document.getElementById('quickstart-oauthtoken').textContent = 'null';
+         // document.getElementById('quickstart-oauthtoken').textContent = token;
+       // } else {
+         // document.getElementById('quickstart-oauthtoken').textContent = 'null';
           // [END_EXCLUDE]
-//        }
+       // }
         // The signed-in user info.
-//        var user = result.user;
-//     }).catch(function(error) {
+       var user = result.user;
+    }).catch(function(error) {
         // Handle Errors here.
-//        var errorCode = error.code;
-//        var errorMessage = error.message;
+       var errorCode = error.code;
+       var errorMessage = error.message;
         // The email of the user's account used.
-//        var email = error.email;
+       var email = error.email;
         // The firebase.auth.AuthCredential type that was used.
-//        var credential = error.credential;
+       var credential = error.credential;
         // [START_EXCLUDE]
-//        if (errorCode === 'auth/account-exists-with-different-credential') {
-//          alert('You have already signed up with a different auth provider for that email.');
+       if (errorCode === 'auth/account-exists-with-different-credential') {
+         alert('You have already signed up with a different auth provider for that email.');
           // If you are using multiple auth providers on your app you should handle linking
           // the user's accounts here.
-//        } else {
-//          console.error(error);
-//       }
+       } else {
+         console.error(error);
+      }
         // [END_EXCLUDE]
-//      });
+     });
       // [END getidptoken]
       // Listening for auth state changes.
       // [START authstatelistener]
       firebase.auth().onAuthStateChanged(function(user) {
         if (user) {
           // User is signed in.
-//          var displayName = user.displayName;
-//          var email = user.email;
-//          var emailVerified = user.emailVerified;
-//          var photoURL = user.photoURL;
-//          var isAnonymous = user.isAnonymous;
-//          var uid = user.uid;
-//          var providerData = user.providerData;
+         var displayName = user.displayName;
+         var email = user.email;
+         var emailVerified = user.emailVerified;
+         var photoURL = user.photoURL;
+         var isAnonymous = user.isAnonymous;
+         var uid = user.uid;
+         var providerData = user.providerData;
           // [START_EXCLUDE]
           console.log("signed in");
+          hidePlayButton = false;
+          $('#playButton').disabled = false;
+          document.getElementById('playButton').disabled = false;
           
-    //      document.getElementById('quickstart-sign-in-status').textContent = 'Signed in';
-    //      document.getElementById('quickstart-sign-in').textContent = 'Sign out';
-    //      document.getElementById('quickstart-account-details').textContent = JSON.stringify(user, null, '  ');
+         document.getElementById('quickstart-sign-in-status').textContent = 'Signed in';
+         document.getElementById('quickstart-sign-in').textContent = 'Sign out';
           // [END_EXCLUDE]
         } else {
           // User is signed out.
           // [START_EXCLUDE]
           console.log("signed out");
+          hidePlayButton = true;
+          $('#playButton').disabled = true;
+          document.getElementById('playButton').disabled = true;
           document.getElementById('quickstart-sign-in-status').textContent = 'Signed out';
           document.getElementById('quickstart-sign-in').textContent = 'Sign in with GitHub';
-   //       document.getElementById('quickstart-account-details').textContent = 'null';
-   //       document.getElementById('quickstart-oauthtoken').textContent = 'null';
           // [END_EXCLUDE]
         }
         // [START_EXCLUDE]
@@ -133,16 +138,23 @@
     window.onload = function() {
       initApp();
     };
+    // angular to bind play button visibility
+    var app = angular.module('app', []);
+    app.controller('mainCtrl', ['$scope', 
+      function($scope) {
+        $scope.hidePlayButton = hidePlayButton;
+      }
+    ]);
   </script>
 </head>
-<body>
+<body ng-app="app" ng-controller="mainCtrl">
 <div class="demo-layout mdl-layout mdl-js-layout mdl-layout--fixed-header">
 
   <!-- Header section containing title -->
   <header class="mdl-layout__header mdl-color-text--white mdl-color--light-blue-700">
     <div class="mdl-cell mdl-cell--12-col mdl-cell--12-col-tablet mdl-grid">
       <div class="mdl-layout__header-row mdl-cell mdl-cell--12-col mdl-cell--12-col-tablet mdl-cell--8-col-desktop">
-        <a href="/"><h3>Eat or Die</h3></a>
+        <h1>Eat or Die</h1>
       </div>
     </div>
   </header>
@@ -167,9 +179,8 @@
             <br><br>
             <p id="rules">In this game, you will start as the small black ball. Press 'a' or 'd' or use the arrow keys to turn left and right. Your goal is to be the last one standing! Eat those that are smaller than you to slowly become the biggest one alive! </p>
           </div>
+          <a href="index.html" ng-show="hidePlayButton === true"><button id="playButton" disabled class="btn btn-primary">Play Game</button></a>
         </div>
-
-        <button class="btn"><a href="index.html">Play Game</a></button>
       </div>
     </div>
   </main>
