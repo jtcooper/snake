@@ -10,18 +10,19 @@
   <script defer src="https://code.getmdl.io/1.1.3/material.min.js"></script>
 
   <link rel="stylesheet" href="main.css">
-
+  <script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
 
   <script src="https://www.gstatic.com/firebasejs/4.7.0/firebase.js"></script>
   <script>
     // Initialize Firebase
     var config = {
-      apiKey: "AIzaSyD9DF0iTkZQnFUuQr6MYHI0yMRrAFBiV6c",
-      authDomain: "authentification-6a032.firebaseapp.com",
-      databaseURL: "https://authentification-6a032.firebaseio.com",
-      projectId: "authentification-6a032",
-      storageBucket: "authentification-6a032.appspot.com",
-      messagingSenderId: "971102617912"
+      apiKey: "AIzaSyBq9caCedGxAcVp0hfA-ZU5uBh4s0Cefqo",
+      authDomain: "creative6-919fb.firebaseapp.com",
+      databaseURL: "https://creative6-919fb.firebaseio.com",
+      projectId: "creative6-919fb",
+      storageBucket: "",
+      messagingSenderId: "664423514775"
     };
     firebase.initializeApp(config);
   </script>
@@ -106,7 +107,8 @@
 //          var uid = user.uid;
 //          var providerData = user.providerData;
           // [START_EXCLUDE]
-          window.location.href='index.html';
+          console.log("signed in");
+          
     //      document.getElementById('quickstart-sign-in-status').textContent = 'Signed in';
     //      document.getElementById('quickstart-sign-in').textContent = 'Sign out';
     //      document.getElementById('quickstart-account-details').textContent = JSON.stringify(user, null, '  ');
@@ -114,6 +116,7 @@
         } else {
           // User is signed out.
           // [START_EXCLUDE]
+          console.log("signed out");
           document.getElementById('quickstart-sign-in-status').textContent = 'Signed out';
           document.getElementById('quickstart-sign-in').textContent = 'Sign in with GitHub';
    //       document.getElementById('quickstart-account-details').textContent = 'null';
@@ -162,9 +165,11 @@
           <div class="quickstart-user-details-container">
             Sign-in status: <span id="quickstart-sign-in-status">Unknown</span>
             <br><br>
-            <p id="rules">In this game, you will start as the small black ball. Press 'a' or 'd' to turn left and right. Your goal is to be the last one standing! Eat those that are smaller than you to slowly become the biggest one alive! </p>
+            <p id="rules">In this game, you will start as the small black ball. Press 'a' or 'd' or use the arrow keys to turn left and right. Your goal is to be the last one standing! Eat those that are smaller than you to slowly become the biggest one alive! </p>
           </div>
         </div>
+
+        <button class="btn"><a href="index.html">Play Game</a></button>
       </div>
     </div>
   </main>
