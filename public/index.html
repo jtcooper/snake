@@ -26,7 +26,8 @@
 		// kynd.info 2014
 
 		var PLAYER_SPEED = 3;
-		var BALL_SPEED = 4;
+		var BALL_SPEED = 5;
+		var BALL_MAX_RADIUS = 80;
 		var gameOver = false;
 		var INVINCIBLE_MAX = 300;
 		var invincibleTimer = INVINCIBLE_MAX;
@@ -36,7 +37,7 @@
 			this.radius = r;
 			this.point = p;
 			this.vector = v;
-			this.maxVec = BALL_SPEED;
+			this.maxVec = BALL_SPEED - ((BALL_SPEED / 2) * (this.radius / BALL_MAX_RADIUS));
 			this.numSegment = Math.floor(r / 3 + 2);
 			this.boundOffset = [];
 			this.boundOffsetBuff = [];
@@ -49,6 +50,7 @@
 				},
 				blendMode: 'lighter'
 			});
+			this.path.opacity = .6;
 
 			for (var i = 0; i < this.numSegment; i ++) {
 				this.boundOffset.push(this.radius);
@@ -170,6 +172,7 @@
 			this.point = p;
 			this.vector = 0;
 			this.MaxVec = 0;
+			this.area = Math.PI * Math.pow(this.radius, 2);
 			this.numSegment = Math.floor(6);
 			this.boundOffset = [];
 			this.boundOffsetBuff = [];
@@ -249,6 +252,7 @@
 			this.radius = 20;
 			this.point = p;
 			this.vector = new Point({length: PLAYER_SPEED, angle: 0});
+			this.area = Math.PI * Math.pow(this.radius, 2);
 			this.numSegment = 4;
 			/*this.path = new Path.Circle(this.point, this.radius);
 			//this.path.fillColor = {hue: Math.random() * 360, saturation: 1, brightness: 1};
@@ -297,7 +301,9 @@
 					// check to see which object is bigger
 					if (this.radius > other.radius) {
 						// eat the other object
-						this.radius += other.radius;
+						//this.radius += other.radius;
+						this.area += other.area;
+						this.radius = Math.sqrt(this.area / Math.PI);
 						this.resetSize();
 						other.remove();
 						return true;
@@ -311,7 +317,7 @@
 				this.segmentVectors = [];
 				this.path = new Path.Circle(this.point, this.radius);
 				this.path.fillColor = 'black';
-				this.path.strokeColor = '#ff0000';
+				//this.path.strokeColor = '#ff0000';
 				this.path.strokeWidth = 5;
 
 				for (var i = 0; i < this.numSegment; i++) {
@@ -344,6 +350,25 @@
 
 		//--------------------- main ---------------------
 
+
+		var MAX_TIMER = 60;
+		var timer = MAX_TIMER;
+		var gameLayer = new Layer();
+		var instructionLayer = new Layer();
+		var instructions = new PointText(new Point(view.size.width / 2, view.size.height - 35));
+		instructions.fillColor = 'black';
+		instructions.fontSize = 20;
+		instructions.justification = 'center';
+		instructions.content = "Move Left: Left Arrow  -  Move Right: Right Arrow\nEat the smaller balls, but watch out for the bigger ones!";
+		//var test = Path.Circle(new Point(view.size.width / 2, view.size.height / 2), 30);
+		//test.fillColor = 'blue';
+		var shieldText = new PointText(new Point(view.size.width / 2, 25));
+		shieldText.fontSize = 20;
+		shieldText.justification = 'center';
+		shieldText.fillColor = "#220000";
+		shieldText.name = "shield";
+		gameLayer.activate();
+
 		var balls = [];
 		var numBalls = 18;
 		for (var i = 0; i < numBalls; i++) {
@@ -352,14 +377,11 @@
 				angle: 360 * Math.random(),
 				length: Math.random() * 10
 			});
-			var radius = Math.random() * 30 + 30;
+			var radius = Math.random() * (BALL_MAX_RADIUS / 2) + (BALL_MAX_RADIUS / 2);
 			balls.push(new Ball(radius, position, vector));
 		}
 
 		var foodObj = [];
-		var MAX_TIMER = 60;
-		var timer = MAX_TIMER;
-
 		var player = new Player(Point.random() * view.size);
 
 		/*function onKeyDown(event) {
@@ -383,6 +405,13 @@
 		function onFrame() {
 			timer--;
 			invincibleTimer--;
+			if (invincibleTimer > 0) {
+				shieldText.content = "Invincibility: " + (parseInt(invincibleTimer / 60) + 1) + " sec";
+			}
+			else if (invincibleTimer === 0) {
+				instructionLayer.children['shield'].remove();
+			}
+
 			if (timer <= 0) {
 				timer = MAX_TIMER;
 				foodObj.push(new Food(Point.random() * view.size));
@@ -395,6 +424,7 @@
 					balls.splice(i, 1);
 					isEaten = false;
 					numBalls--;
+					CheckGameEnd();
 				}
 			}
 
@@ -416,10 +446,10 @@
 					isEaten = false;
 				}
 			}
-			if (Key.isDown('a')) {
+			if (Key.isDown('a') || Key.isDown('left')) {
 				player.moveLeft();
 			}
-			else if (Key.isDown('d')) {
+			else if (Key.isDown('d') || Key.isDown('right')) {
 				player.moveRight();
 			}
 			if (gameOver) {
